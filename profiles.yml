@@ -1,0 +1,7 @@
+octane11_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: octane11_analytics.duckdb
+      threads: 4

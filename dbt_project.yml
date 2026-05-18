@@ -1,0 +1,27 @@
+name: 'octane11_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'octane11_analytics'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+docs-paths: ["docs"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  octane11_analytics:
+    staging:
+      +materialized: table
+      +schema: staging
+      +tags: ['staging']
+    marts:
+      +materialized: table
+      +schema: marts
+      +tags: ['marts']

@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: raw
+    description: "Raw seed data simulating source system ingestion"
+    schema: main
+    tables:
+      - name: raw_campaigns
+        description: "Marketing campaigns across clients and channels"
+        columns:
+          - name: campaign_id
+            description: "Unique campaign identifier"
+          - name: client_id
+          - name: channel
+            accepted_values:
+              values: ['linkedin', 'google', 'email', 'display', 'content']
+
+      - name: raw_events
+        description: "Marketing engagement events"
+        columns:
+          - name: event_id
+            description: "Unique event identifier"
+          - name: campaign_id
+          - name: event_type
+            accepted_values:
+              values: ['impression', 'click', 'form_fill', 'meeting_booked']
+
+      - name: raw_accounts
+        description: "B2B accounts (companies) that engage with campaigns"
+        columns:
+          - name: account_id
+            description: "Unique account identifier"

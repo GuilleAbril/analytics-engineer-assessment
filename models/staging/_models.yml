@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: stg_campaigns
+    description: "Clean staging model for marketing campaigns. Reference model — provided as an example."
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        tests:
+          - unique
+          - not_null
+      - name: channel
+        description: "Marketing channel (linkedin, google, email, display, content)"
+      - name: budget
+        description: "Campaign budget in USD"
+      - name: campaign_duration_days
+        description: "Number of days between start_date and end_date"

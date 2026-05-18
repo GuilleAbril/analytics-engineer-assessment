@@ -1,0 +1,103 @@
+account_id,account_name,industry,employee_count,client_id
+acc_001,Account 1 Corp,Professional Services,38,client_002
+acc_002,Account 2 Corp,Financial Services,198,client_004
+acc_003,Account 3 Corp,Technology,17,client_001
+acc_004,Account 4 Corp,Retail,934,client_002
+acc_005,Account 5 Corp,Manufacturing,160,client_004
+acc_006,Account 6 Corp,Healthcare,360,client_001
+acc_007,Account 7 Corp,Technology,300,client_003
+acc_008,Account 8 Corp,Technology,196,client_004
+acc_009,Account 9 Corp,Technology,6926,client_002
+acc_010,Account 10 Corp,Professional Services,247,client_001
+acc_011,Account 11 Corp,Financial Services,590,client_003
+acc_012,Account 12 Corp,Financial Services,4433,client_003
+acc_013,Account 13 Corp,Professional Services,2170,client_002
+acc_014,Account 14 Corp,Retail,451,client_004
+acc_015,Account 15 Corp,Healthcare,4599,client_003
+acc_016,Account 16 Corp,Technology,233,client_003
+acc_017,Account 17 Corp,Technology,64,client_004
+acc_018,Account 18 Corp,Manufacturing,670,client_002
+acc_019,Account 19 Corp,Financial Services,775,client_004
+acc_020,Account 20 Corp,Retail,112,client_004
+acc_021,Account 21 Corp,Technology,3505,client_002
+acc_022,Account 22 Corp,Professional Services,811,client_004
+acc_023,Account 23 Corp,Retail,5120,client_001
+acc_024,Account 24 Corp,Professional Services,318,client_003
+acc_025,Account 25 Corp,Technology,646,client_001
+acc_026,Account 26 Corp,Professional Services,194,client_001
+acc_027,Account 27 Corp,Professional Services,9318,client_002
+acc_028,Account 28 Corp,Financial Services,3647,client_001
+acc_029,Account 29 Corp,Retail,92,client_003
+acc_030,Account 30 Corp,Healthcare,4947,client_001
+acc_031,Account 31 Corp,Technology,2134,client_002
+acc_032,Account 32 Corp,Financial Services,687,client_004
+acc_033,Account 33 Corp,Financial Services,4296,client_003
+acc_034,Account 34 Corp,Manufacturing,866,client_004
+acc_035,Account 35 Corp,Technology,431,client_001
+acc_036,Account 36 Corp,Retail,151,client_001
+acc_037,Account 37 Corp,Professional Services,171,client_001
+acc_038,Account 38 Corp,Healthcare,727,client_004
+acc_039,Account 39 Corp,Financial Services,148,client_004
+acc_040,Account 40 Corp,Manufacturing,2589,client_004
+acc_041,Account 41 Corp,Healthcare,8652,client_001
+acc_042,Account 42 Corp,Professional Services,177,client_004
+acc_043,Account 43 Corp,Professional Services,96,client_002
+acc_044,Account 44 Corp,Retail,124,client_003
+acc_045,Account 45 Corp,Manufacturing,8261,client_001
+acc_046,Account 46 Corp,Technology,176,client_002
+acc_047,Account 47 Corp,Financial Services,114,client_004
+acc_048,Account 48 Corp,Technology,589,client_003
+acc_049,Account 49 Corp,Manufacturing,83,client_002
+acc_050,Account 50 Corp,Healthcare,65,client_003
+acc_051,Account 51 Corp,Technology,8812,client_002
+acc_052,Account 52 Corp,Technology,140,client_001
+acc_053,Account 53 Corp,Professional Services,2965,client_002
+acc_054,Account 54 Corp,Retail,241,client_003
+acc_055,Account 55 Corp,Healthcare,62,client_003
+acc_056,Account 56 Corp,Manufacturing,888,client_003
+acc_057,Account 57 Corp,Technology,12,client_002
+acc_058,Account 58 Corp,Retail,77,client_002
+acc_059,Account 59 Corp,Healthcare,8180,client_003
+acc_060,Account 60 Corp,Retail,1129,client_003
+acc_061,Account 61 Corp,Professional Services,36,client_001
+acc_062,Account 62 Corp,Professional Services,360,client_002
+acc_063,Account 63 Corp,Professional Services,5326,client_004
+acc_064,Account 64 Corp,Healthcare,295,client_001
+acc_065,Account 65 Corp,Technology,3144,client_003
+acc_066,Account 66 Corp,Financial Services,8008,client_001
+acc_067,Account 67 Corp,Technology,3443,client_001
+acc_068,Account 68 Corp,Healthcare,766,client_002
+acc_069,Account 69 Corp,Technology,574,client_002
+acc_070,Account 70 Corp,Professional Services,883,client_004
+acc_071,Account 71 Corp,Retail,49,client_004
+acc_072,Account 72 Corp,Technology,955,client_002
+acc_073,Account 73 Corp,Healthcare,919,client_001
+acc_074,Account 74 Corp,Manufacturing,405,client_003
+acc_075,Account 75 Corp,Financial Services,225,client_003
+acc_076,Account 76 Corp,Healthcare,992,client_004
+acc_077,Account 77 Corp,Professional Services,147,client_003
+acc_078,Account 78 Corp,Financial Services,158,client_004
+acc_079,Account 79 Corp,Healthcare,8150,client_001
+acc_080,Account 80 Corp,Manufacturing,157,client_004
+acc_081,Account 81 Corp,Technology,752,client_004
+acc_082,Account 82 Corp,Technology,6144,client_001
+acc_083,Account 83 Corp,Professional Services,6068,client_004
+acc_084,Account 84 Corp,Healthcare,5845,client_002
+acc_085,Account 85 Corp,Financial Services,7212,client_002
+acc_086,Account 86 Corp,Retail,7654,client_001
+acc_087,Account 87 Corp,Healthcare,8044,client_003
+acc_088,Account 88 Corp,Manufacturing,4502,client_004
+acc_089,Account 89 Corp,Professional Services,875,client_003
+acc_090,Account 90 Corp,Technology,70,client_002
+acc_091,Account 91 Corp,Financial Services,248,client_001
+acc_092,Account 92 Corp,Manufacturing,4186,client_004
+acc_093,Account 93 Corp,Manufacturing,3418,client_001
+acc_094,Account 94 Corp,Technology,3882,client_004
+acc_095,Account 95 Corp,Technology,456,client_002
+acc_096,Account 96 Corp,Manufacturing,744,client_004
+acc_097,Account 97 Corp,Retail,363,client_003
+acc_098,Account 98 Corp,Financial Services,484,client_002
+acc_099,Account 99 Corp,Healthcare,122,client_003
+acc_100,Account 100 Corp,Healthcare,91,client_002
+,Account Null ID Corp,Technology,500,client_001
+acc_bad_001,Account No Client Corp,Retail,250,
