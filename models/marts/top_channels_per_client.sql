@@ -45,7 +45,10 @@ ranked_channels_per_client as (
         client_id,
         channel,
         total_revenue_influenced,
-        rank() over (partition by client_id order by total_revenue_influenced) as channel_rank
+        rank() over (
+            partition by client_id 
+            order by total_revenue_influenced
+        ) as channel_rank
     from total_revenue_client_channel
 
 ),

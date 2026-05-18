@@ -5,12 +5,12 @@
 -- 1. Use raw tables instead of staging/intermediate views or tables.
 -- 2. In case that an account can be a target for two different clients (¿?) client_id sould be considered for the aggrupation
 --    In other case it would be considering revenue coming from an account for two different clients as one.
--- (2. puede ser target de dos clientes diferentes)?)
 -- 3. It would be sufficient group by account_id and client_id, if only account_id is required
 -- 4. count(*) consider null or invalid events but sum(e.revenue_influenced) not.
 -- 5. order by + limit doesnt guaranteer the order depending the warehouse engine (example: BigQuery or Spark doesnt)
 --    Use window function row_number instead.
--- (6. delete mart_ prefix from model name)
+-- 6. Add hardcoded date from parameter
+-- 7. delete mart_ prefix from model name
 -- ============================================================
 
 --select
@@ -41,7 +41,6 @@ with events as (
 
     select *
     from {{ ref('stg_raw__events') }}
-    -- 2. Dejamos las comillas simples solo aquí en el SQL para que el motor lo entienda como texto
     where event_date >= cast('{{ top_accounts_start_event_date }}' as date)
 
 ),
@@ -75,10 +74,10 @@ accounts_total_revenue as (
         account_id,
         account_name,
         industry,
-        sum(revenue_influenced)                            as total_revenue_influenced,
-        count(event_id)                                    as total_events,
+        sum(revenue_influenced) as total_revenue_influenced,
+        count(event_id) as total_events,
         sum(revenue_influenced)
-            / nullif(count(event_id), 0)                   as revenue_per_event
+            / nullif(count(event_id), 0) as revenue_per_event
     from events_accounts
     group by client_id, account_id, account_name, industry
 

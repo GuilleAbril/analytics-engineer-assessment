@@ -42,7 +42,9 @@ efficient_campaigns as (
         campaigns.budget,
         meeting_booked.meetings_booked,
         ( campaigns.budget / meeting_booked.meetings_booked ) as cost_per_meeting,
-        avg( campaigns.budget / meeting_booked.meetings_booked ) over (partition by campaigns.campaign_id, campaigns.channel) as avg_cost_per_meeting_for_channel
+        avg( campaigns.budget / meeting_booked.meetings_booked ) over (
+            partition by campaigns.campaign_id, campaigns.channel
+        ) as avg_cost_per_meeting_for_channel
     from 
     meeting_booked
     left join stg_campaigns as campaigns
