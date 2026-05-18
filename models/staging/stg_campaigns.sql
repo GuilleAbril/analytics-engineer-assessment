@@ -2,7 +2,8 @@
 -- Use it as a guide; you are not required to follow this structure exactly.
 
 {{ config(
-    tags=['campaigns']
+    tags=['campaigns'],
+    materialized='table'
 ) }}
 
 with source as (

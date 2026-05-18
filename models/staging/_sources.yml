@@ -12,8 +12,10 @@ sources:
             description: "Unique campaign identifier"
           - name: client_id
           - name: channel
-            accepted_values:
-              values: ['linkedin', 'google', 'email', 'display', 'content']
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['linkedin', 'google', 'email', 'display', 'content']
 
       - name: raw_events
         description: "Marketing engagement events"
@@ -22,11 +24,17 @@ sources:
             description: "Unique event identifier"
           - name: campaign_id
           - name: event_type
-            accepted_values:
-              values: ['impression', 'click', 'form_fill', 'meeting_booked']
+            data_tests:
+              - accepted_values:
+                  arguments:
+                    values: ['impression', 'click', 'form_fill', 'meeting_booked']
 
       - name: raw_accounts
         description: "B2B accounts (companies) that engage with campaigns"
         columns:
           - name: account_id
             description: "Unique account identifier"
+          - name: account_name
+          - name: industry
+          - name: employee_count
+          - name: client_id

@@ -15,10 +15,13 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
+vars:
+  top_accounts_start_event_date: "2024-01-01"
+
 models:
   octane11_analytics:
     staging:
-      +materialized: table
+      +materialized: view
       +schema: staging
       +tags: ['staging']
     marts:

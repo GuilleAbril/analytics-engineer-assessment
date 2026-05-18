@@ -6,3 +6,4 @@ target/
 *.duckdb
 .venv/
 .user.yml
+dbt_internal_packages/
