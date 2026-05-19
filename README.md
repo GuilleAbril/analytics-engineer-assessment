@@ -180,3 +180,96 @@ We value clarity of thinking over completeness. An incomplete solution with clea
 ## Questions?
 
 If anything is unclear, feel free to reach out. Good luck!
+
+---
+
+## Running the project locally
+
+### Prerequisites
+
+Make sure you have completed the [Setup](#setup) steps above (Python, `dbt-duckdb`, `dbt deps`, `dbt seed`).
+
+### Before running dbt commands
+
+DuckDB only allows one writer at a time. If you have the database file open in a SQL client (DBeaver, TablePlus, the DuckDB CLI, etc.) while dbt tries to run, it will fail with a lock error. **Close or disconnect any tool that has `octane11_analytics.duckdb` open before executing dbt commands.**
+
+### Building the models
+
+Run all models from scratch (or refresh them):
+
+```bash
+dbt run
+```
+
+To run a specific model and its upstream dependencies:
+
+```bash
+dbt run --select +<model_name>
+```
+
+For example:
+
+```bash
+dbt run --select +account_engagement_trend
+```
+
+### Running tests
+
+Once the models are built, validate data quality:
+
+```bash
+dbt test
+```
+
+To run tests for a specific model only:
+
+```bash
+dbt test --select <model_name>
+```
+
+### Typical local workflow
+
+```bash
+# 1. Close any SQL client that has octane11_analytics.duckdb open
+# 2. Build all models
+dbt run
+# 3. Run all tests
+dbt test
+```
+
+---
+
+## Notes on `account_engagement_trend` for BigQuery
+
+The incremental model currently uses `incremental_strategy='delete+insert'`, which works in DuckDB but requires adjustments to run correctly in BigQuery.
+
+### Required config changes
+
+```sql
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='merge',
+        unique_key=['client_id', 'account_id', 'event_month'],
+        on_schema_change='sync_all_columns',
+        partition_by={
+            'field': 'event_month',
+            'data_type': 'date',
+            'granularity': 'month'
+        },
+        cluster_by=['client_id', 'account_id']
+    )
+}}
+```
+
+### Why each change is needed
+
+| Config | DuckDB (current) | BigQuery |
+|--------|-----------------|----------|
+| `incremental_strategy` | `delete+insert` | `merge` — BigQuery does not support `delete+insert`; `merge` is the native strategy for composite keys |
+| `partition_by` | not applicable | Partition on `event_month` (monthly granularity) so dbt's incremental filter only scans the relevant partitions, avoiding a full table scan on every run |
+| `cluster_by` | not applicable | Cluster on `client_id` + `account_id` to co-locate the rows that the LAG window function reads together, reducing shuffle cost |
+
+### Why `merge` over `insert_overwrite` in this case
+
+`insert_overwrite` (partition-based) is cheaper when you can overwrite entire partitions, but the 2-month lookback window in this model spans two partitions simultaneously. Using `merge` with the composite `unique_key` is safer here: it updates only the specific rows that changed rather than wiping and rewriting two full partitions, which matters when late-arriving events from month N-2 should not disturb month N-1 rows that were already correct.

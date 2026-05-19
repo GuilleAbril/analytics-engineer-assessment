@@ -1,21 +1,6 @@
 version: 2
 
 models:
-  - name: stg_campaigns
-    description: "Clean staging model for marketing campaigns. Reference model — provided as an example."
-    columns:
-      - name: campaign_id
-        description: "Unique campaign identifier"
-        tests:
-          - unique
-          - not_null
-      - name: channel
-        description: "Marketing channel (linkedin, google, email, display, content)"
-      - name: budget
-        description: "Campaign budget in USD"
-      - name: campaign_duration_days
-        description: "Number of days between start_date and end_date"
-
   - name: stg_raw__events
     description: "Staged events data cleaned and typed from raw source"
     columns:
@@ -32,7 +17,7 @@ models:
         description: "Client identifier"
         data_tests:
           - not_null
-      - name: date
+      - name: event_date
         description: "Date of the event"
         data_tests:
           - not_null
@@ -47,6 +32,8 @@ models:
         description: "Account identifier"
       - name: revenue_influenced
         description: "Revenue influenced by the event in decimal"
+        data_tests:
+          - is_positive
 
   - name: stg_raw__campaigns
     description: "Staged campaigns data cleaned and typed from raw source"
@@ -75,3 +62,28 @@ models:
         description: "Campaign end date"
       - name: budget
         description: "Campaign budget in decimal"
+        data_tests:
+          - is_positive
+  
+  - name: stg_raw__accounts
+    description: "Staged accounts data cleaned and typed from raw source"
+    columns:
+      - name: account_id
+        description: "Unique account identifier that is targeted to the client"
+        data_tests:
+          - not_null
+          - unique
+      - name: account_name
+        description: "Account name"
+        data_tests:
+          - not_null
+      - name: industry
+        description: "Industry or sector of the account"
+      - name: employee_count
+        description: "Name of the employees in the account"
+        data_tests:
+          - is_positive
+      - name: client_id
+        description: "Client identifier for the target account"
+        data_tests:
+          - not_null

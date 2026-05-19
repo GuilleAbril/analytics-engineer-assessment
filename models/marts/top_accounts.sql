@@ -5,12 +5,13 @@
 -- 1. Use raw tables instead of staging/intermediate views or tables.
 -- 2. In case that an account can be a target for two different clients (¿?) client_id sould be considered for the aggrupation
 --    In other case it would be considering revenue coming from an account for two different clients as one.
--- 3. It would be sufficient group by account_id and client_id, if only account_id is required
--- 4. count(*) consider null or invalid events but sum(e.revenue_influenced) not.
--- 5. order by + limit doesnt guaranteer the order depending the warehouse engine (example: BigQuery or Spark doesnt)
+-- 3. It would be sufficient group by account_id and client_id, if only account_id is required. But give more information to the user at a glance.
+-- 4. If only total_revenue is required, total_events and revenue_per_event can be deleted. But also can give more usefull information to the user.
+-- 5. count(*) consider null or invalid events but sum(e.revenue_influenced) not.
+-- 6. order by + limit doesnt guaranteer the order depending the warehouse engine (example: BigQuery or Spark doesnt)
 --    Use window function row_number instead.
--- 6. Add hardcoded date from parameter
--- 7. delete mart_ prefix from model name
+-- 7. Add hardcoded date from parameter
+-- 8. delete mart_ prefix from model name
 -- ============================================================
 
 --select

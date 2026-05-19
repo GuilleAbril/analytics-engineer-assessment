@@ -1,3 +1,87 @@
 version: 2
 
-models: []
+models:
+  - name: efficient_campaigns
+    description: "Campaigns enriched with meeting booking metrics, cost per meeting, and the average cost per meeting within each channel. Useful for identifying which campaigns are converting budget into booked meetings most efficiently."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - client_id
+              - campaign_id
+    columns:
+      - name: client_id
+        description: "Client identifier"
+        data_tests:
+          - not_null
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('stg_raw__campaigns')
+                field: campaign_id
+      - name: campaign_name
+        description: "Name of the campaign"
+      - name: channel
+        description: "Marketing channel of the campaign"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['linkedin', 'google', 'email', 'display', 'content']
+      - name: budget
+        description: "Campaign budget in decimal"
+        data_tests:
+          - not_null
+          - is_positive
+      - name: meetings_booked
+        description: "Total number of meetings booked attributed to the campaign (count of events with event_type = 'meeting_booked')"
+        data_tests:
+          - not_null
+          - is_positive
+      - name: cost_per_meeting
+        description: "Campaign budget divided by the number of meetings booked. Lower values indicate more efficient campaigns."
+        data_tests:
+          - not_null
+          - is_positive
+      - name: avg_cost_per_meeting_for_channel
+        description: "Average cost per meeting across all campaigns within the same channel. Used as a benchmark to compare campaign efficiency against its channel peers."
+        data_tests:
+          - not_null
+          - is_positive
+
+  - name: top_channels_per_client
+    description: "Top 3 marketing channels per client ranked by total revenue influenced in the last 90 days, considering only conversion events (form_fill and meeting_booked). Ties in revenue may result in more than 3 channels per client due to the use of rank()."
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - client_id
+              - channel
+    columns:
+      - name: client_id
+        description: "Client identifier"
+        data_tests:
+          - not_null
+      - name: channel
+        description: "Marketing channel"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['linkedin', 'google', 'email', 'display', 'content']
+      - name: total_revenue_influenced
+        description: "Sum of revenue influenced by conversion events (form_fill, meeting_booked) for the client-channel pair over the last 90 days"
+        data_tests:
+          - not_null
+          - is_positive
+      - name: channel_rank
+        description: "Rank of the channel for the client based on total_revenue_influenced (descending). Only ranks 1-3 are included. Uses rank(), so ties share the same rank."
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
