@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: int_events_enriched
+    description: >
+      One row per engagement event, enriched with its campaign attributes
+      (channel, budget, name) and account attributes (industry, employee_count),
+      plus funnel flags. This is the single, reusable event fact that every mart
+      builds on, so the joins and funnel definitions are written exactly once.
+
+      Materialized incrementally: each run re-processes a trailing look-back
+      window of events (var late_arriving_lookback_days, default 7 days) and
+      replaces them by event_id, so events that arrive late are not missed.
+
+      Campaigns and accounts are LEFT JOINed: one event references a campaign
+      absent from the source, and rather than silently dropping that event (and
+      its revenue) it is kept with a NULL channel; the gap is surfaced by the
+      relationship test on stg_events.
+    columns:
+      - name: event_id
+        description: "Unique event identifier. The grain of the table."
+        tests:
+          - unique
+          - not_null
+      - name: client_id
+        description: "Client (tenant) the event belongs to."
+      - name: event_date
+        description: "Date the event occurred."
+      - name: event_month
+        description: "First day of the calendar month of event_date; grain for monthly trend analysis."
+      - name: event_type
+        description: "Funnel stage: impression, click, form_fill or meeting_booked."
+      - name: revenue_influenced
+        description: "Influenced pipeline value for the event; 0 for non-conversion events."
+      - name: channel
+        description: "Channel of the event's campaign. NULL for the one orphan event with a missing campaign."
+      - name: campaign_budget
+        description: "Planned budget of the event's campaign, in USD."
+      - name: is_conversion
+        description: "True for form_fill and meeting_booked -- the only revenue-bearing funnel stages."
+      - name: is_meeting_booked
+        description: "True for meeting_booked events -- the highest-intent funnel stage."

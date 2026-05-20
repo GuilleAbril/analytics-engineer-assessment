@@ -1,3 +1,190 @@
 version: 2
 
-models: []
+models:
+  - name: mart_top_channels_by_client
+    description: >
+      Question 1. The top 3 marketing channels per client ranked by influenced
+      revenue over a trailing window (default 90 days, var revenue_window_days).
+      The window is anchored to the most recent event_date in the data, not
+      current_date, so the result is reproducible against the static seed.
+      One row per client + ranked channel (at most 3 per client). Channels with
+      zero influenced revenue in the window are not ranked.
+    columns:
+      - name: client_id
+        description: "Client (tenant) the ranking belongs to."
+        tests:
+          - not_null
+      - name: channel
+        description: "Marketing channel being ranked for this client."
+        tests:
+          - not_null
+      - name: total_revenue_influenced
+        description: "Sum of revenue_influenced for the client's events on this channel within the window."
+        tests:
+          - not_null
+      - name: channel_rank
+        description: >
+          1 = highest-revenue channel for the client. ROW_NUMBER is used (not
+          RANK) for a deterministic top 3; ties are broken alphabetically by channel.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+              quote: false
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['client_id', 'channel']
+
+  - name: mart_account_engagement_trend
+    description: >
+      Question 2. Monthly engagement volume per client/account with the
+      month-over-month change. One row per client + account + month in which the
+      account had at least one event. prev_month_events comes from the
+      immediately preceding calendar month via a self-join, so an account silent
+      the previous month correctly shows 0 (rather than skipping to an older
+      month, which lag() over active months would do).
+    columns:
+      - name: client_id
+        description: "Client (tenant) the account belongs to."
+        tests:
+          - not_null
+      - name: account_id
+        description: "Account whose engagement is being tracked."
+        tests:
+          - not_null
+      - name: event_month
+        description: "First day of the calendar month."
+        tests:
+          - not_null
+      - name: total_events
+        description: "Count of all events (any funnel stage) for the account in that month."
+        tests:
+          - not_null
+      - name: prev_month_events
+        description: "total_events for the immediately preceding calendar month; 0 if the account had no events then."
+        tests:
+          - not_null
+      - name: mom_change
+        description: "total_events minus prev_month_events. Positive = engagement grew versus the previous month."
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['client_id', 'account_id', 'event_month']
+
+  - name: mart_efficient_campaigns
+    description: >
+      Question 3. Campaigns that beat their channel peers on cost efficiency,
+      where efficiency = budget / meetings_booked (lower is better). Campaigns
+      with zero meetings booked are excluded (efficiency undefined). One row per
+      qualifying campaign — only campaigns with cost_per_meeting below their
+      channel average are kept.
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier."
+        tests:
+          - unique
+          - not_null
+      - name: client_id
+        description: "Client (tenant) that owns the campaign."
+        tests:
+          - not_null
+      - name: campaign_name
+        description: "Human-readable campaign name."
+      - name: channel
+        description: "Marketing channel the campaign runs on."
+        tests:
+          - not_null
+      - name: budget
+        description: "Planned campaign budget in USD."
+      - name: meetings_booked
+        description: "Count of meeting_booked events attributed to the campaign. Always greater than 0."
+        tests:
+          - not_null
+      - name: cost_per_meeting
+        description: "budget / meetings_booked. Lower is more cost-efficient."
+        tests:
+          - not_null
+      - name: avg_cost_per_meeting_for_channel
+        description: >
+          Mean of cost_per_meeting across all campaigns on the same channel
+          (the peer benchmark). cost_per_meeting is always below this value.
+        tests:
+          - not_null
+
+  - name: mart_top_accounts
+    description: >
+      Part 2. The top 10 accounts per client by influenced revenue. Rewritten
+      from the original buggy model — the full issue list is documented as
+      comments at the top of the .sql file. One row per client + ranked account
+      (at most 10 per client).
+    columns:
+      - name: client_id
+        description: "Client (tenant) the ranking belongs to."
+        tests:
+          - not_null
+      - name: account_id
+        description: "Account being ranked."
+        tests:
+          - not_null
+      - name: account_name
+        description: "Display name of the account."
+      - name: industry
+        description: "Industry segment of the account."
+      - name: total_revenue_influenced
+        description: "Sum of revenue_influenced across all the account's events (coalesced to 0)."
+        tests:
+          - not_null
+      - name: total_events
+        description: "Count of all events (any funnel stage) for the account."
+      - name: total_conversions
+        description: "Count of conversion events (form_fill, meeting_booked) for the account."
+      - name: account_rank
+        description: "1 = highest-revenue account for the client. Capped at 10."
+        tests:
+          - not_null
+          - dbt_utils.accepted_range:
+              min_value: 1
+              max_value: 10
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['client_id', 'account_id']
+
+  - name: mart_campaign_spend_vs_budget
+    description: >
+      Part 3. Compares each campaign's planned budget with the actual spend
+      reported in the media agency's Parquet export. One row per campaign.
+      Campaigns absent from the spend export are reported with
+      total_actual_spend = 0.
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier."
+        tests:
+          - unique
+          - not_null
+      - name: client_id
+        description: "Client (tenant) that owns the campaign."
+        tests:
+          - not_null
+      - name: campaign_name
+        description: "Human-readable campaign name."
+      - name: channel
+        description: "Marketing channel the campaign runs on."
+      - name: budget
+        description: "Planned campaign budget in USD."
+      - name: total_actual_spend
+        description: "Sum of daily actual_spend for the campaign; 0 when the campaign is absent from the export."
+        tests:
+          - not_null
+      - name: variance
+        description: "budget minus total_actual_spend. Positive = under budget, negative = over budget."
+        tests:
+          - not_null
+      - name: variance_pct
+        description: "variance / budget, rounded to 4 decimals. NULL only if budget is 0."
+      - name: status
+        description: "'under_budget' when variance >= 0, otherwise 'over_budget'."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['under_budget', 'over_budget']

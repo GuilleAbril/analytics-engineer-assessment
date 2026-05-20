@@ -15,3 +15,112 @@ models:
         description: "Campaign budget in USD"
       - name: campaign_duration_days
         description: "Number of days between start_date and end_date"
+
+  - name: stg_accounts
+    description: >
+      One row per B2B account (company). Cleaned from raw_accounts: one source
+      row has a NULL account_id ("Account Null ID Corp") and is dropped here,
+      because an account with no key cannot be joined to events or tested.
+    columns:
+      - name: account_id
+        description: "Unique account identifier."
+        tests:
+          - unique
+          - not_null
+      - name: client_id
+        description: "Client (tenant) that owns this account."
+        tests:
+          - not_null
+      - name: account_name
+        description: "Display name of the company."
+      - name: industry
+        description: "Industry segment the account belongs to."
+      - name: employee_count
+        description: "Company headcount; used as a size proxy."
+
+  - name: stg_events
+    description: >
+      One row per marketing engagement event — the funnel grain. Source keys are
+      made trustworthy here: rows with a NULL event_id are dropped and a single
+      duplicated event_id is de-duplicated, so downstream models can rely on
+      event_id being unique and non-null. revenue_influenced is coalesced to 0
+      because impressions and clicks genuinely earn zero, not an unknown amount.
+    columns:
+      - name: event_id
+        description: "Unique event identifier (de-duplicated in this model)."
+        tests:
+          - unique
+          - not_null
+      - name: campaign_id
+        description: "Campaign the event belongs to."
+        tests:
+          - relationships:
+              to: ref('stg_campaigns')
+              field: campaign_id
+              config:
+                severity: warn
+      - name: account_id
+        description: "Account that engaged with the campaign."
+        tests:
+          - relationships:
+              to: ref('stg_accounts')
+              field: account_id
+              config:
+                severity: warn
+      - name: client_id
+        description: "Client (tenant) the event belongs to."
+        tests:
+          - not_null
+      - name: event_type
+        description: "Funnel stage: impression, click, form_fill or meeting_booked."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['impression', 'click', 'form_fill', 'meeting_booked']
+      - name: revenue_influenced
+        description: "Pipeline value attributed to the touchpoint. 0 for non-conversion events."
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.expression_is_true:
+          name: stg_events_revenue_only_on_conversions
+          expression: "revenue_influenced = 0 or event_type in ('form_fill', 'meeting_booked')"
+          config:
+            severity: warn
+          description: >
+            Business rule: only form_fill and meeting_booked events carry
+            revenue. This test currently WARNS — the raw feed contains one
+            'click' event with non-zero revenue_influenced, a genuine
+            data-quality issue worth surfacing to the source team rather than
+            silently absorbing.
+
+  - name: stg_ad_spend
+    description: >
+      One row per campaign per day of actual ad spend, sourced from the media
+      agency's external Parquet file (not a dbt seed). spend_date is cast from
+      TIMESTAMP to DATE.
+    columns:
+      - name: campaign_id
+        description: "Campaign the spend is attributed to."
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_campaigns')
+              field: campaign_id
+              config:
+                severity: warn
+      - name: client_id
+        description: "Client that owns the campaign."
+      - name: spend_date
+        description: "Calendar day the spend occurred."
+        tests:
+          - not_null
+      - name: actual_spend
+        description: "Amount spent on the campaign that day, in USD."
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns: ['campaign_id', 'spend_date']
+          config:
+            severity: warn

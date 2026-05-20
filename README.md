@@ -180,3 +180,185 @@ We value clarity of thinking over completeness. An incomplete solution with clea
 ## Questions?
 
 If anything is unclear, feel free to reach out. Good luck!
+
+---
+
+# Solution — Implementation Notes
+
+This section documents the analytics layer built on top of the seed data: how to
+run it locally, the project structure, and the reasoning behind the main
+decisions.
+
+## How to run locally
+
+The one-time environment setup (Python, `dbt-duckdb`, `profiles.yml`) is covered
+in **Setup** above. Once that is done, from the project root:
+
+```bash
+dbt deps      # install the dbt_utils package
+dbt seed      # load raw_campaigns / raw_accounts / raw_events
+dbt build     # run every model + every test, in dependency order
+```
+
+`dbt build` is the recommended entry point — it runs seeds, models and tests in
+DAG order. To run things separately or selectively:
+
+```bash
+dbt run                                       # build all models
+dbt test                                      # run all tests
+dbt build --select staging                    # one layer
+dbt build --select +mart_efficient_campaigns  # a mart and everything upstream
+```
+
+Inspect the results with any DuckDB client against the generated
+`octane11_analytics_claude.duckdb` file, e.g.:
+
+```bash
+duckdb octane11_analytics_claude.duckdb
+select * from main_marts.mart_top_channels_by_client;
+```
+
+Models are written to schemas `main_staging`, `main_intermediate` and
+`main_marts` (the layer name is appended to DuckDB's default `main` schema).
+
+> **Incremental model:** `int_events_enriched` is incremental. The first
+> `dbt run` builds it in full; later runs only re-process a trailing window.
+> Use `dbt run --full-refresh` to rebuild it from scratch.
+
+## Part 3 — making the Parquet file available
+
+`data/ad_spend.parquet` is exposed **as a dbt source**, not a seed. dbt-duckdb
+can read external files directly, so the `media_agency` source declares an
+`external_location` (under `config.meta`, the dbt 1.10+ location for `meta`):
+
+```yaml
+# models/staging/_sources.yml
+- name: media_agency
+  config:
+    meta:
+      external_location: "data/{name}.parquet"
+  tables:
+    - name: ad_spend
+```
+
+`{{ source('media_agency', 'ad_spend') }}` then resolves straight to the Parquet
+file (`{name}` is replaced with the table name). **No extra step is needed** —
+keep the file at `data/ad_spend.parquet` and run `dbt build`. `stg_ad_spend` is
+the staging model on top of it.
+
+## Project structure
+
+```
+models/
+  staging/        cast + clean source data, one model per source table
+  intermediate/   int_events_enriched — the single reusable event fact
+  marts/          business-question outputs, one model per deliverable
+```
+
+| Layer | Model | Purpose |
+|-------|-------|---------|
+| staging | `stg_campaigns` | Reference model (provided). |
+| staging | `stg_accounts` | Clean accounts; drops the NULL-key row. |
+| staging | `stg_events` | Clean events; drops NULL key, de-duplicates `event_id`. |
+| staging | `stg_ad_spend` | Staging over the external Parquet spend file. |
+| intermediate | `int_events_enriched` | Events + campaign + account + funnel flags. Incremental. |
+| marts | `mart_top_channels_by_client` | Q1 — top 3 channels per client by revenue. |
+| marts | `mart_account_engagement_trend` | Q2 — monthly engagement per account + MoM change. |
+| marts | `mart_efficient_campaigns` | Q3 — campaigns beating their channel on cost per meeting. |
+| marts | `mart_top_accounts` | Part 2 — rewritten top-10-accounts model. |
+| marts | `mart_campaign_spend_vs_budget` | Part 3 — actual spend vs. planned budget. |
+
+`int_events_enriched` is the central design decision: the campaign/account joins
+and the funnel definitions (`is_conversion`, `is_meeting_booked`) live there
+once, and every mart selects from it (DRY). Q2 only needs the event grain;
+Q1, Q3 and `mart_top_accounts` reuse the same enriched fact.
+
+## Modeling decisions
+
+**Q1 — Top channels per client.** "Last 90 days" is a rolling window. In
+production it would be measured from `current_date`; because the seed data is
+static, the window is anchored to the most recent `event_date` in the data so
+the result stays reproducible for reviewers. The window length is a variable
+(`revenue_window_days`, default 90). Ranking uses `ROW_NUMBER()` for a
+deterministic top 3 (ties broken alphabetically by channel); channels with zero
+influenced revenue in the window are not ranked.
+
+**Q2 — Account engagement trend.** `prev_month_events` is taken from the
+*previous calendar month* via a self-join, **not** `lag()`. `lag()` over only
+the months an account was active would compare March to January when February
+was silent — wrong. The self-join returns 0 for a silent previous month. Output
+grain: one row per account per month-with-activity.
+
+**Q3 — Efficient campaigns.** `cost_per_meeting = budget / meetings_booked`;
+campaigns with no meetings are excluded via an `INNER JOIN` (division by zero /
+explicitly out of scope). `avg_cost_per_meeting_for_channel` is the mean of the
+per-campaign `cost_per_meeting` within a channel — the peer benchmark — computed
+with a window function. Only campaigns strictly beating that benchmark are
+returned, since the question asks for the *outperforming* campaigns.
+
+**Part 2 — `mart_top_accounts`.** The full list of issues found in the original
+model is documented as comments at the top of `models/marts/mart_top_accounts.sql`.
+The headline bug: it returned a single global `LIMIT 10` instead of the top 10
+*per client*, and never selected `client_id` — unusable, and a cross-tenant data
+leak, on a multi-tenant platform.
+
+## Data quality findings
+
+Profiling the seeds surfaced several issues, which drove the staging logic and
+the tests:
+
+| Finding | Handling |
+|---------|----------|
+| 1 campaign row with a NULL `campaign_id` | Dropped in `stg_campaigns` (provided filter). |
+| 1 account row with a NULL `account_id` | Dropped in `stg_accounts`. |
+| 1 duplicated `event_id` in `raw_events` | De-duplicated in `stg_events` via `qualify row_number()`. |
+| 1 event references a campaign missing from the source | Kept (LEFT JOIN) with a NULL channel; surfaced by a `relationships` test (`warn`). |
+| 1 `click` event carries non-zero `revenue_influenced` (the README says clicks never do) | Surfaced by a `dbt_utils.expression_is_true` test on `stg_events` (`warn`). |
+
+Tests that catch *known* anomalies are set to `severity: warn`, not `error`, so
+they flag the issue on every run without blocking the build — the bug belongs
+with the source team, not in a hard pipeline failure.
+
+## Performance & efficiency
+
+**Incremental model + late-arriving data.** `int_events_enriched` is incremental
+(`delete+insert` on `event_id`). Engagement events can be ingested days after
+they occur, so a naïve "rows newer than the current max" filter would silently
+miss them. Instead each run re-processes a **trailing look-back window**
+(`late_arriving_lookback_days`, default 7 days): it re-reads the last N days of
+events, and `delete+insert` on `event_id` replaces any already-loaded rows while
+inserting genuinely new late events. The variable should be set to cover the
+worst-case ingestion lag. The downstream marts are small aggregates and rebuild
+fully on every run.
+
+**BigQuery optimizations.** The warehouse here is DuckDB, but the configs are
+written for a production BigQuery deployment and activate automatically when
+`target.type == 'bigquery'` (they resolve to `none` on DuckDB). They are applied
+only to `int_events_enriched` — the large, event-grain fact — because that is
+where they pay off:
+
+- `partition_by` on `event_date` (monthly granularity): the incremental
+  look-back filter and most analytical queries are time-bounded, so partition
+  pruning cuts the bytes scanned.
+- `cluster_by` on `client_id, channel`: the most common filter / group-by
+  columns on a multi-tenant platform.
+
+The marts are deliberately **not** partitioned or clustered: they are small,
+pre-aggregated tables (tens to a couple of thousand rows) where those features
+would add metadata overhead for no real scan saving. The principle: optimize the
+large upstream fact, not the small downstream aggregates.
+
+## Testing
+
+Tests are curated for signal over coverage (≈25 tests in total):
+
+- **Structural integrity** — `unique` + `not_null` on every primary key
+  (`event_id`, `account_id`, `campaign_id`), and `dbt_utils.unique_combination_of_columns`
+  on every mart grain.
+- **Referential integrity** — `relationships` tests on the event foreign keys.
+- **Domain rules** — `accepted_values` on `event_type` / `channel` / `status`,
+  `dbt_utils.accepted_range` on `account_rank`, and the
+  revenue-only-on-conversions expression test that catches the dirty `click` row.
+
+Every model is documented in a YAML file (`_models.yml` per layer), with
+table- and column-level descriptions that explain *why*, not just *what*.

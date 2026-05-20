@@ -1,8 +1,8 @@
-name: 'octane11_analytics'
+name: 'octane11_analytics_claude'
 version: '1.0.0'
 config-version: 2
 
-profile: 'octane11_analytics'
+profile: 'octane11_analytics_claude'
 
 model-paths: ["models"]
 seed-paths: ["seeds"]
@@ -16,12 +16,23 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  octane11_analytics:
+  octane11_analytics_claude:
     staging:
       +materialized: table
       +schema: staging
       +tags: ['staging']
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ['intermediate']
     marts:
       +materialized: table
       +schema: marts
       +tags: ['marts']
+
+vars:
+  # Rolling window (in days) for "last N days" revenue in mart_top_channels_by_client.
+  revenue_window_days: 90
+  # Trailing window (in days) of events re-processed on every incremental run of
+  # int_events_enriched, so late-arriving events are not missed.
+  late_arriving_lookback_days: 7

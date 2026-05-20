@@ -12,8 +12,9 @@ sources:
             description: "Unique campaign identifier"
           - name: client_id
           - name: channel
-            accepted_values:
-              values: ['linkedin', 'google', 'email', 'display', 'content']
+            tests:
+              - accepted_values:
+                  values: ['linkedin', 'google', 'email', 'display', 'content']
 
       - name: raw_events
         description: "Marketing engagement events"
@@ -22,11 +23,34 @@ sources:
             description: "Unique event identifier"
           - name: campaign_id
           - name: event_type
-            accepted_values:
-              values: ['impression', 'click', 'form_fill', 'meeting_booked']
+            tests:
+              - accepted_values:
+                  values: ['impression', 'click', 'form_fill', 'meeting_booked']
 
       - name: raw_accounts
         description: "B2B accounts (companies) that engage with campaigns"
         columns:
           - name: account_id
             description: "Unique account identifier"
+
+  - name: media_agency
+    description: >
+      Campaign-level ad spend delivered by the external media agency that
+      manages paid media on behalf of clients. Unlike the raw_* tables this is
+      not a dbt seed: it is a Parquet file read directly by DuckDB through
+      dbt-duckdb's external_location, so no load step is required.
+    config:
+      meta:
+        external_location: "data/{name}.parquet"
+    tables:
+      - name: ad_spend
+        description: "Daily actual ad spend per campaign, as reported by the agency."
+        columns:
+          - name: campaign_id
+            description: "Campaign the spend is attributed to. Foreign key to raw_campaigns."
+          - name: client_id
+            description: "Client that owns the campaign."
+          - name: spend_date
+            description: "Day the spend occurred. TIMESTAMP in the file; cast to DATE in staging."
+          - name: actual_spend
+            description: "Amount spent on the campaign that day, in USD."
