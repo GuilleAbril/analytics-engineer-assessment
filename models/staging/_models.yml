@@ -9,9 +9,102 @@ models:
         tests:
           - unique
           - not_null
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
       - name: channel
         description: "Marketing channel (linkedin, google, email, display, content)"
       - name: budget
         description: "Campaign budget in USD"
       - name: campaign_duration_days
         description: "Number of days between start_date and end_date"
+
+  - name: stg_accounts
+    description: >
+      One row per B2B account per client. Casts employee_count to integer and derives
+      employee_size_band (small <50, mid 50–500, enterprise >500) for downstream segmentation.
+    columns:
+      - name: account_id
+        description: "Unique account identifier (within the platform)"
+        tests:
+          - not_null
+      - name: client_id
+        description: "Tenant that owns this account record"
+        tests:
+          - not_null
+      - name: account_name
+      - name: industry
+      - name: employee_count
+        description: "Headcount as an integer; used to derive employee_size_band"
+      - name: employee_size_band
+        description: "small (<50), mid (50–500), enterprise (>500)"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['small', 'mid', 'enterprise']
+
+  - name: stg_events
+    description: >
+      One row per marketing engagement event. Casts event_date to date and revenue_influenced
+      to decimal. Adds is_conversion_event boolean (true for form_fill and meeting_booked) to
+      make downstream filters explicit and consistent.
+      Materialized as incremental with a 7-day re-processing window for late-arriving events.
+    columns:
+      - name: event_id
+        description: "Unique event identifier"
+        tests:
+          - unique
+          - not_null
+      - name: campaign_id
+        description: "Campaign that generated this event"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_campaigns')
+                field: campaign_id
+      - name: client_id
+        description: "Tenant identifier; always present on valid events"
+        tests:
+          - not_null
+      - name: account_id
+        description: "B2B account that engaged"
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_accounts')
+                field: account_id
+      - name: event_date
+        description: "Date the engagement occurred"
+      - name: event_type
+        description: "Funnel stage: impression, click, form_fill, meeting_booked"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['impression', 'click', 'form_fill', 'meeting_booked']
+      - name: revenue_influenced
+        description: "Pipeline value in USD; NULL for impressions and clicks"
+      - name: is_conversion_event
+        description: "True when event_type is form_fill or meeting_booked; false otherwise"
+
+  - name: stg_ad_spend
+    description: >
+      Daily actual ad spend per campaign from the media agency Parquet export (data/ad_spend.parquet).
+      Grain: one row per (campaign_id, client_id, spend_date).
+      Reads via read_parquet() because dbt-fusion does not support the external_location source meta;
+      in dbt-core, this would be replaced by source('external', 'ad_spend') with external_location.
+    columns:
+      - name: campaign_id
+        description: "Campaign the spend row belongs to"
+        tests:
+          - not_null
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: spend_date
+        description: "Calendar date the spend was incurred"
+      - name: actual_spend
+        description: "Actual spend in USD on this day for this campaign"

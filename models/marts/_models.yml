@@ -1,3 +1,149 @@
 version: 2
 
-models: []
+models:
+  - name: mart_top_channels_per_client_last_90d
+    description: >
+      Answers Q1: For each client, the top 3 marketing channels by total revenue influenced
+      over the last 90 days. Only conversion events (form_fill, meeting_booked) contribute
+      revenue; impressions and clicks are excluded.
+      Grain: one row per (client_id, channel) in the top 3.
+      Window: rolling 90 days from reference_date (default: current_date).
+      Tie-breaking: row_number() — ties broken non-deterministically. At most 3 rows per client.
+    columns:
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: channel
+        description: "Marketing channel (linkedin, google, email, display, content)"
+        tests:
+          - not_null
+      - name: total_revenue_influenced
+        description: "Sum of revenue_influenced from conversion events in the 90-day window"
+      - name: channel_rank
+        description: "Rank within the client's channels, 1 = highest revenue. At most 3."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+
+  - name: mart_account_engagement_monthly
+    description: >
+      Answers Q2: Monthly event volume per (client, account) with month-over-month delta.
+      Grain: one row per (client_id, account_id, event_month).
+      Months with zero events produce no row — no calendar spine is used.
+      For each account's first observed month, prev_month_events and mom_change are NULL (expected).
+    columns:
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: account_id
+        description: "B2B account identifier"
+        tests:
+          - not_null
+      - name: event_month
+        description: "First day of the calendar month (date_trunc month)"
+        tests:
+          - not_null
+      - name: total_events
+        description: "Total engagement events in this month for this account"
+        tests:
+          - not_null
+      - name: prev_month_events
+        description: "total_events from the previous month with data (NULL for first observed month)"
+      - name: mom_change
+        description: "total_events minus prev_month_events (NULL for first observed month)"
+
+  - name: mart_efficient_campaigns
+    description: >
+      Answers Q3: Campaigns that outperform their channel peers on cost efficiency.
+      Efficiency = budget / meetings_booked. Outperforming = cost_per_meeting below the
+      channel average. Campaigns with zero meetings booked are excluded.
+      Grain: one row per campaign_id (campaigns are unique across the dataset).
+      avg_cost_per_meeting_for_channel is computed only over campaigns with meetings_booked > 0.
+    columns:
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        tests:
+          - not_null
+          - unique
+      - name: campaign_name
+      - name: channel
+        description: "Marketing channel"
+        tests:
+          - not_null
+      - name: budget
+        description: "Planned campaign budget in USD"
+      - name: meetings_booked
+        description: "Total meeting_booked events for this campaign (always > 0 in this model)"
+        tests:
+          - not_null
+      - name: cost_per_meeting
+        description: "budget / meetings_booked — lower is more efficient"
+      - name: avg_cost_per_meeting_for_channel
+        description: "Unweighted mean cost_per_meeting across all qualifying campaigns in the same channel"
+
+  - name: mart_top_accounts
+    description: >
+      Part 2 rewrite: Top 10 accounts per client by total revenue influenced (all-time).
+      Only events with a valid matching account (INNER JOIN) are included.
+      Grain: one row per (client_id, account_id), rank <= 10 within each client.
+      total_conversion_events counts only form_fill and meeting_booked events.
+    columns:
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: account_id
+        description: "B2B account identifier"
+        tests:
+          - not_null
+      - name: account_name
+      - name: industry
+      - name: total_revenue_influenced
+        description: "Sum of revenue_influenced across all events for this account"
+      - name: total_conversion_events
+        description: "Count of form_fill and meeting_booked events for this account"
+      - name: account_rank
+        description: "Rank within client by total_revenue_influenced desc, 1 = top account. At most 10."
+        tests:
+          - not_null
+
+  - name: mart_campaign_budget_vs_spend
+    description: >
+      Part 3: Compares each campaign's planned budget against total actual spend from the media agency
+      Parquet export. Campaigns with no spend rows are included with total_actual_spend = 0.
+      variance = budget - total_actual_spend (positive = under budget, negative = over budget).
+      Grain: one row per campaign_id.
+    columns:
+      - name: client_id
+        description: "Tenant identifier"
+        tests:
+          - not_null
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        tests:
+          - not_null
+          - unique
+      - name: campaign_name
+      - name: channel
+      - name: budget
+        description: "Planned campaign budget in USD"
+      - name: total_actual_spend
+        description: "Sum of actual_spend from the Parquet export; 0 if no spend rows exist"
+      - name: variance
+        description: "budget - total_actual_spend; positive = under budget, negative = over budget"
+      - name: variance_pct
+        description: "variance / budget; NULL if budget is 0"
+      - name: status
+        description: "over_budget or under_budget"
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['over_budget', 'under_budget']

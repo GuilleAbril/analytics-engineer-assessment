@@ -25,6 +25,7 @@ renamed as (
 
     from source
     where campaign_id is not null
+      and client_id is not null
 
 )
 

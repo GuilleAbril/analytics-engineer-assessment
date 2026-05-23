@@ -1,7 +1,7 @@
-octane11_analytics:
+octane11_analytics_claude_2:
   target: dev
   outputs:
     dev:
       type: duckdb
-      path: octane11_analytics.duckdb
+      path: octane11_analytics_claude_2.duckdb
       threads: 4

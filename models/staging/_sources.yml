@@ -11,22 +11,60 @@ sources:
           - name: campaign_id
             description: "Unique campaign identifier"
           - name: client_id
+            description: "Tenant identifier"
           - name: channel
-            accepted_values:
-              values: ['linkedin', 'google', 'email', 'display', 'content']
+            description: "Marketing channel (linkedin, google, email, display, content)"
+          - name: campaign_name
+          - name: start_date
+          - name: end_date
+          - name: budget
+            description: "Planned campaign budget in USD"
 
       - name: raw_events
-        description: "Marketing engagement events"
+        description: "Marketing engagement events linking accounts to campaigns"
         columns:
           - name: event_id
             description: "Unique event identifier"
           - name: campaign_id
+            description: "Campaign that generated the event"
+          - name: client_id
+            description: "Tenant identifier"
+          - name: event_date
+            description: "Date the engagement occurred"
           - name: event_type
-            accepted_values:
-              values: ['impression', 'click', 'form_fill', 'meeting_booked']
+            description: "Funnel stage: impression, click, form_fill, meeting_booked"
+          - name: account_id
+            description: "B2B account that engaged"
+          - name: revenue_influenced
+            description: "Pipeline value attributed to this touchpoint; only populated for form_fill and meeting_booked"
 
       - name: raw_accounts
         description: "B2B accounts (companies) that engage with campaigns"
         columns:
           - name: account_id
             description: "Unique account identifier"
+          - name: client_id
+            description: "Tenant that owns this account record"
+          - name: account_name
+          - name: industry
+          - name: employee_count
+
+  - name: external
+    description: >
+      External files loaded via DuckDB read_parquet(). Path is relative to the project root.
+      Note: dbt-fusion does not support the external_location meta on sources, so stg_ad_spend
+      reads the parquet directly via read_parquet('data/ad_spend.parquet'). In dbt-core with the
+      dbt-duckdb adapter, the meta.external_location approach would work.
+    schema: main
+    tables:
+      - name: ad_spend
+        description: "Daily actual ad spend per campaign, delivered by the media agency as a Parquet export"
+        columns:
+          - name: campaign_id
+            description: "Campaign the spend row belongs to"
+          - name: client_id
+            description: "Tenant identifier"
+          - name: spend_date
+            description: "Calendar date the spend was incurred"
+          - name: actual_spend
+            description: "Actual spend in USD on this day for this campaign"

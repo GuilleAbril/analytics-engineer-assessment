@@ -1,8 +1,8 @@
-name: 'octane11_analytics'
+name: 'octane11_analytics_claude_2'
 version: '1.0.0'
 config-version: 2
 
-profile: 'octane11_analytics'
+profile: 'octane11_analytics_claude_2'
 
 model-paths: ["models"]
 seed-paths: ["seeds"]
@@ -16,11 +16,15 @@ clean-targets:
   - "dbt_packages"
 
 models:
-  octane11_analytics:
+  octane11_analytics_claude_2:
     staging:
       +materialized: table
       +schema: staging
       +tags: ['staging']
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ['intermediate']
     marts:
       +materialized: table
       +schema: marts

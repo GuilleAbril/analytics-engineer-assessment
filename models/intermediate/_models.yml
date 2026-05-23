@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: int_events_enriched
+    description: >
+      Events joined with campaign metadata (channel, campaign_name, budget, campaign dates).
+      Join uses both campaign_id AND client_id to ensure tenant isolation.
+      Grain: one row per event_id. Used by Q1, Q3, and mart_top_accounts.
+    columns:
+      - name: event_id
+        description: "Unique event identifier (from stg_events)"
+        tests:
+          - unique
+          - not_null
+      - name: client_id
+        tests:
+          - not_null
+      - name: channel
+        description: "Marketing channel from the campaign; NULL if campaign not found"
+
+  - name: int_campaign_performance
+    description: >
+      Campaign-level aggregation of event counts and revenue. One row per
+      (client_id, campaign_id). Pre-computes metrics shared by Q3 and Part 3
+      to avoid repeating the GROUP BY logic across multiple marts.
+    columns:
+      - name: campaign_id
+        description: "Unique campaign identifier"
+        tests:
+          - not_null
+      - name: client_id
+        tests:
+          - not_null
+      - name: total_meetings_booked
+        description: "Count of meeting_booked events for this campaign"
+      - name: total_revenue_influenced
+        description: "Sum of revenue_influenced across all conversion events"
