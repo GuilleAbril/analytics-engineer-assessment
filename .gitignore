@@ -7,3 +7,4 @@ target/
 .venv/
 .user.yml
 dbt_internal_packages/
+.idea/

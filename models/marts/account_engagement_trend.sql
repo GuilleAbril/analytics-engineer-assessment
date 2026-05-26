@@ -27,7 +27,7 @@ with stg_events_month as (
         {{ dbt.date_trunc('month', 'event_date') }} as event_month
     from {{ ref('stg_raw__events') }}
 
-    {% if is_incremental() %}
+    {#% if is_incremental() %}
         -- On incremental runs, reprocess the last 2 months to capture late arrivals
         -- and recalculate the prev_month_events LAG for the current month correctly
         where {{ dbt.date_trunc('month', 'event_date') }} >= (
@@ -37,7 +37,7 @@ with stg_events_month as (
             )
             from {{ this }}
         )
-    {% endif %}
+    {% endif %#}
 
 ),
 
