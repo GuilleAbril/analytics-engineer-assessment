@@ -38,3 +38,16 @@ sources:
           - name: industry
           - name: employee_count
           - name: client_id
+
+  - name: external
+    description: "External files (Parquet) read directly by DuckDB"
+    meta:
+      external_location: "{{ env_var('DBT_PROJECT_DIR', '.') }}/data/{name}.parquet"
+    tables:
+      - name: ad_spend
+        description: external data source with ad spend information
+        columns:
+          - name: campaign_id
+          - name: client_id
+          - name: spend_date
+          - name: actual_spend
